@@ -435,5 +435,5 @@ class RecurrentRGCN(nn.Module):
         pred4 = torch.mm(z2, z2.T)
         labels = torch.arange(pred1.shape[0]).to(self.gpu)
         # train_cl_loss =(loss_fn(pred1 / self.temp, labels) + loss_fn(pred2 / self.temp, labels)) / 2
-        train_cl_loss =(loss_fn(pred1 / self.temp, labels) + loss_fn(pred2 / self.temp, labels)+loss_fn(pred3 / self.temp, labels) + loss_fn(pred4 / self.temp, labels)) / 4
+        train_cl_loss =(loss_fn(pred1 / self.temp, labels) + loss_fn(pred2 / self.temp, labels)+loss_fn(pred3 / self.temp, labels) + loss_fn(pred4 / self.temp, labels)) / 4 # 论文中的公式(17)，self.temp就是论文中的τ
         return train_cl_loss
