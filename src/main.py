@@ -458,7 +458,7 @@ if __name__ == '__main__':
     parser.add_argument("--weight", type=float, default=1,
                         help="weight of static constraint")
     parser.add_argument("--pre-weight", type=float, default=0.7,
-                        help="weight of entity prediction task")
+                        help="weight of entity prediction task。就是论文中的λ")
     parser.add_argument("--discount", type=float, default=1,
                         help="discount of weight of static constraint")
     parser.add_argument("--angle", type=int, default=10,
