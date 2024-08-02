@@ -3,3 +3,4 @@ data
 logs
 models
 result
+__pycache__
