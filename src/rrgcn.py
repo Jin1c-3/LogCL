@@ -263,8 +263,8 @@ class RecurrentRGCN(nn.Module):
         #-----------------全局历史建模-------------------------------------
         self.his_ent, subg_index = self.all_GCN(self.h, sub_graph,use_cuda)
         his_r_emb = F.normalize(self.emb_rel)
-        his_att = F.softmax(self.w5(query_mask+ self.his_ent),dim=1)
-        his_emb = his_att*self.his_ent
+        his_att = F.softmax(self.w5(query_mask+ self.his_ent),dim=1) # 论文中的公式(13)，所以w5是论文中的W6
+        his_emb = his_att*self.his_ent # 论文中的公式(14)
         his_emb = F.normalize(his_emb)
 
         history_embs = []
@@ -275,8 +275,8 @@ class RecurrentRGCN(nn.Module):
             for i, g in enumerate(g_list):
                 g = g.to(self.gpu)
                 t2 = len(g_list)-i+1
-                h_t = torch.cos(self.weight_t2 * t2 + self.bias_t2).repeat(self.num_ents,1)
-                self.h =self.w4(torch.concat([self.h,h_t],dim=1))
+                h_t = torch.cos(self.weight_t2 * t2 + self.bias_t2).repeat(self.num_ents,1) # 论文中的公式(2)
+                self.h =self.w4(torch.concat([self.h,h_t],dim=1)) # 论文中的公式(3)
                 temp_e = self.h[g.r_to_e]
                 x_input = torch.zeros(self.num_rels * 2, self.h_dim).float().cuda() if use_cuda else torch.zeros(self.num_rels * 2, self.h_dim).float()
                 for span, r_idx in zip(g.r_len, g.uniq_r):
@@ -284,12 +284,12 @@ class RecurrentRGCN(nn.Module):
                     x_mean = torch.mean(x, dim=0, keepdim=True)
                     x_input[r_idx] = x_mean
                 x_input = self.emb_rel + x_input
-                current_h = self.rgcn.forward(g, self.h, [self.emb_rel, self.emb_rel])
+                current_h = self.rgcn.forward(g, self.h, [self.emb_rel, self.emb_rel]) # 局部编码器的RGCN聚合
                 current_h = F.normalize(current_h) if self.layer_norm else current_h
                 # current_h1 = F.sigmoid(self.w6(current_h))   # 让相应的维度大小早）0~1之间，通过mask矩阵获取query time 出现的实体，其他实体设置为0
-                att_e = F.softmax(self.w2(query_mask+current_h),dim=1)
-                
-                if i == 0:
+                att_e = F.softmax(self.w2(query_mask+current_h),dim=1) # 论文中的公式(10)，所以w2是论文中的W5，att_e就是论文中的ɑi
+
+                if i == 0: # 论文中的公式(5)，GRU门部分
                     self.h_0 = self.entity_cell(current_h, self.h)    # 第1层输入
                     self.h_0 = F.normalize(self.h_0) if self.layer_norm else self.h_0
                     # self.hr = self.relation_cell(x_input, self.emb_rel)    # 第1层输入
@@ -299,18 +299,18 @@ class RecurrentRGCN(nn.Module):
                     self.h_0 = F.normalize(self.h_0) if self.layer_norm else self.h_0
                     # self.hr = self.relation_cell(x_input, self.hr)  # 第2层输出==下一时刻第一层输入
                     # self.hr = F.normalize(self.hr) if self.layer_norm else self.hr
-                time_weight = F.sigmoid(torch.mm(x_input, self.time_gate_weight) + self.time_gate_bias)
-                self.hr = time_weight * x_input + (1-time_weight) * self.emb_rel
+                time_weight = F.sigmoid(torch.mm(x_input, self.time_gate_weight) + self.time_gate_bias) # 论文中的公式(8)，所以time_gate_weight是论文中的W3
+                self.hr = time_weight * x_input + (1-time_weight) * self.emb_rel # 论文中的公式(7)
                 self.hr = F.normalize(self.hr) if self.layer_norm else self.hr
                 history_embs.append(self.h_0)
                 his_rel_embs.append(self.hr)
                 his_temp_embs.append(self.h_0)
                 self.h = self.h_0
-                att_emb = att_e*self.h_0 
+                att_emb = att_e*self.h_0 # 论文中公式(11)的后半部分，还未求和
                 att_embs.append(att_emb.unsqueeze(0))
             att_ent = torch.mean(torch.concat(att_embs,dim=0),dim=0)
             att_ent = F.normalize(att_ent)
-            history_emb=  att_ent+history_embs[-1]
+            history_emb=  att_ent+history_embs[-1] # 论文中的公式(11)
             history_emb = F.normalize(history_emb) if self.layer_norm else history_emb
         else:
             self.hr = None
@@ -372,7 +372,7 @@ class RecurrentRGCN(nn.Module):
         r_idx = que_pair[2]
         temp_r = self.emb_rel[r_idx]
         e_input = torch.zeros(self.num_ents, self.h_dim).float().cuda() if use_cuda else torch.zeros(self.num_ents, self.h_dim).float()
-        for span, e_idx in zip(r_len, uniq_e):
+        for span, e_idx in zip(r_len, uniq_e): # 对相关关系的均值池化操作
             x = temp_r[span[0]:span[1],:]
             x_mean = torch.mean(x, dim=0, keepdim=True)
             e_input[e_idx] = x_mean
@@ -380,12 +380,12 @@ class RecurrentRGCN(nn.Module):
         query_mask = torch.zeros((self.num_ents,self.h_dim)).to(self.gpu) if use_cuda else torch.zeros(1)
         t1 = torch.tensor(T_idx).cuda().to(self.gpu)
         q_t = torch.cos(self.weight_t2 * 0 + self.bias_t2).repeat(self.num_ents,1)
-        qe_emb = self.w4(torch.concat([self.dynamic_emb,q_t],dim=1))
+        qe_emb = self.w4(torch.concat([self.dynamic_emb,q_t],dim=1)) # 论文中的公式(3)，所以w4是论文中的W0
         
         e1_emb = qe_emb[uniq_e]
 
         rel_emb = e_input[uniq_e] 
-        query_emb = self.w1(torch.concat([e1_emb,rel_emb],dim=1)) 
+        query_emb = self.w1(torch.concat([e1_emb,rel_emb],dim=1)) # 论文中公式(4)的前半部分
         query_mask[uniq_e] = query_emb
 
         embedding, static_emb, r_emb, his_emb, his_r_emb, his_temp_embs, his_rel_embs = self.forward(sub_graph, T_idx, query_mask, glist, static_graph, use_cuda)
@@ -418,7 +418,7 @@ class RecurrentRGCN(nn.Module):
     def all_GCN(self,ent_emb, sub_graph, use_cuda):
         sub_graph = sub_graph.to(self.gpu)
         sub_graph.ndata['h'] = ent_emb 
-        his_emb = self.his_rgcn_layer.forward(sub_graph, ent_emb, [self.emb_rel, self.emb_rel])
+        his_emb = self.his_rgcn_layer.forward(sub_graph, ent_emb, [self.emb_rel, self.emb_rel]) # 全局编码器的RGCN聚合
         subg_index = torch.masked_select(
                 torch.arange(0, sub_graph.number_of_nodes(), dtype=torch.long).cuda(),
                 (sub_graph.in_degrees(range(sub_graph.number_of_nodes())) > 0))

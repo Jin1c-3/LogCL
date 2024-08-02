@@ -83,7 +83,7 @@ class ConvTransE(torch.nn.Module):
             embedded_his = F.tanh(his_emb)
             e1_embedded = e1_embedded_all[triplets[:, 0]].unsqueeze(1)
             e1_his_embedded = embedded_his[triplets[:, 0]].unsqueeze(1)
-            e1_embed = pre_weight*e1_embedded + (1-pre_weight)*e1_his_embedded
+            e1_embed = pre_weight*e1_embedded + (1-pre_weight)*e1_his_embedded # 论文中的公式(19)
         rel_embedded = emb_rel[triplets[:, 1]].unsqueeze(1)
         stacked_inputs = torch.cat([e1_embed, rel_embedded], 1)
         stacked_inputs = self.bn0(stacked_inputs)
