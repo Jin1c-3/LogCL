@@ -5,28 +5,43 @@ import torch
 from torch.nn.parameter import Parameter
 import math
 import os
+
 path_dir = os.getcwd()
 
+
 class ConvTransR(torch.nn.Module):
-    def __init__(self, num_relations, embedding_dim, input_dropout=0, hidden_dropout=0, feature_map_dropout=0, channels=50, kernel_size=3, use_bias=True):
+    def __init__(
+        self,
+        num_relations,
+        embedding_dim,
+        input_dropout=0,
+        hidden_dropout=0,
+        feature_map_dropout=0,
+        channels=50,
+        kernel_size=3,
+        use_bias=True,
+    ):
         super(ConvTransR, self).__init__()
         self.inp_drop = torch.nn.Dropout(input_dropout)
         self.hidden_drop = torch.nn.Dropout(hidden_dropout)
         self.feature_map_drop = torch.nn.Dropout(feature_map_dropout)
         self.loss = torch.nn.BCELoss()
 
-        self.conv1 = torch.nn.Conv1d(2, channels, kernel_size, stride=1,
-                               padding=int(math.floor(kernel_size / 2)))  # kernel size is odd, then padding = math.floor(kernel_size/2)
+        self.conv1 = torch.nn.Conv1d(
+            2, channels, kernel_size, stride=1, padding=int(math.floor(kernel_size / 2))
+        )  # kernel size is odd, then padding = math.floor(kernel_size/2)
         self.bn0 = torch.nn.BatchNorm1d(2)
         self.bn1 = torch.nn.BatchNorm1d(channels)
         self.bn2 = torch.nn.BatchNorm1d(embedding_dim)
-        self.register_parameter('b', Parameter(torch.zeros(num_relations*2)))
+        self.register_parameter("b", Parameter(torch.zeros(num_relations * 2)))
         self.fc = torch.nn.Linear(embedding_dim * channels, embedding_dim)
         self.bn3 = torch.nn.BatchNorm1d(embedding_dim)
         # self.bn4 = torch.nn.BatchNorm1d(Config.embedding_dim)
         self.bn_init = torch.nn.BatchNorm1d(embedding_dim)
 
-    def forward(self, embedding, emb_rel, triplets, nodes_id=None, mode="train", negative_rate=0):
+    def forward(
+        self, embedding, emb_rel, triplets, nodes_id=None, mode="train", negative_rate=0
+    ):
 
         # e1_embedded_all = F.tanh(embedding)
         e1_embedded_all = embedding
@@ -54,7 +69,17 @@ class ConvTransR(torch.nn.Module):
 
 
 class ConvTransE(torch.nn.Module):
-    def __init__(self, num_entities, embedding_dim, input_dropout=0, hidden_dropout=0, feature_map_dropout=0, channels=50, kernel_size=3, use_bias=True):
+    def __init__(
+        self,
+        num_entities,
+        embedding_dim,
+        input_dropout=0,
+        hidden_dropout=0,
+        feature_map_dropout=0,
+        channels=50,
+        kernel_size=3,
+        use_bias=True,
+    ):
 
         super(ConvTransE, self).__init__()
         # 初始化relation embeddings
@@ -65,25 +90,37 @@ class ConvTransE(torch.nn.Module):
         self.feature_map_drop = torch.nn.Dropout(feature_map_dropout)
         self.loss = torch.nn.BCELoss()
 
-        self.conv1 = torch.nn.Conv1d(2, channels, kernel_size, stride=1,
-                               padding=int(math.floor(kernel_size / 2)))  # kernel size is odd, then padding = math.floor(kernel_size/2)
+        self.conv1 = torch.nn.Conv1d(
+            2, channels, kernel_size, stride=1, padding=int(math.floor(kernel_size / 2))
+        )  # kernel size is odd, then padding = math.floor(kernel_size/2)
         self.bn0 = torch.nn.BatchNorm1d(2)
         self.bn1 = torch.nn.BatchNorm1d(channels)
         self.bn2 = torch.nn.BatchNorm1d(embedding_dim)
-        self.register_parameter('b', Parameter(torch.zeros(num_entities)))
+        self.register_parameter("b", Parameter(torch.zeros(num_entities)))
         self.fc = torch.nn.Linear(embedding_dim * channels, embedding_dim)
         self.bn3 = torch.nn.BatchNorm1d(embedding_dim)
         self.bn_init = torch.nn.BatchNorm1d(embedding_dim)
 
-    def forward(self, embedding, emb_rel, triplets, his_emb, pre_weight, pre_type, partial_embeding=None):
+    def forward(
+        self,
+        embedding,
+        emb_rel,
+        triplets,
+        his_emb,
+        pre_weight,
+        pre_type,
+        partial_embeding=None,
+    ):
         # e1_embedded_all = embedding
         batch_size = len(triplets)
-        if pre_type =="all":
+        if pre_type == "all":
             e1_embedded_all = F.tanh(embedding)
             embedded_his = F.tanh(his_emb)
             e1_embedded = e1_embedded_all[triplets[:, 0]].unsqueeze(1)
             e1_his_embedded = embedded_his[triplets[:, 0]].unsqueeze(1)
-            e1_embed = pre_weight*e1_embedded + (1-pre_weight)*e1_his_embedded # 论文中的公式(19)，pre_weight就是论文中的λ
+            e1_embed = (
+                pre_weight * e1_embedded + (1 - pre_weight) * e1_his_embedded
+            )  # 论文中的公式(19)，pre_weight就是论文中的λ
         rel_embedded = emb_rel[triplets[:, 1]].unsqueeze(1)
         stacked_inputs = torch.cat([e1_embed, rel_embedded], 1)
         stacked_inputs = self.bn0(stacked_inputs)

@@ -1,9 +1,26 @@
 import torch.nn as nn
 import torch
 
+
 class BaseRGCN(nn.Module):
-    def __init__(self, num_nodes, h_dim, out_dim, num_rels, num_bases=-1, num_basis=-1,
-                 num_hidden_layers=1, dropout=0, self_loop=False, skip_connect=False, encoder_name="", opn="sub", rel_emb=None, use_cuda=False, analysis=False):
+    def __init__(
+        self,
+        num_nodes,
+        h_dim,
+        out_dim,
+        num_rels,
+        num_bases=-1,
+        num_basis=-1,
+        num_hidden_layers=1,
+        dropout=0,
+        self_loop=False,
+        skip_connect=False,
+        encoder_name="",
+        opn="sub",
+        rel_emb=None,
+        use_cuda=False,
+        analysis=False,
+    ):
         super(BaseRGCN, self).__init__()
         self.num_nodes = num_nodes
         self.h_dim = h_dim
@@ -58,12 +75,11 @@ class BaseRGCN(nn.Module):
 
     def forward(self, g):
         if self.features is not None:
-            g.ndata['id'] = self.features
+            g.ndata["id"] = self.features
         print("h before GCN message passing")
-        print(g.ndata['h'])
+        print(g.ndata["h"])
         print("h behind GCN message passing")
         for layer in self.layers:
             layer(g)
-        print(g.ndata['h'])
-        return g.ndata.pop('h')
-
+        print(g.ndata["h"])
+        return g.ndata.pop("h")
