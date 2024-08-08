@@ -23,6 +23,7 @@ class MLPLinear(nn.Module):
         super(MLPLinear, self).__init__()
         self.linear1 = nn.Linear(in_dim, out_dim)
         self.linear2 = nn.Linear(out_dim, out_dim)
+        self.dropout = nn.Dropout(0.3)
         self.act = nn.LeakyReLU(0.2)
         self.reset_parameters()
 
@@ -32,6 +33,7 @@ class MLPLinear(nn.Module):
 
     def forward(self, x):
         x = self.act(F.normalize(self.linear1(x), p=2, dim=1))
+        x = self.dropout(x)
         x = self.act(F.normalize(self.linear2(x), p=2, dim=1))
 
         return x
@@ -223,7 +225,7 @@ class RecurrentRGCN(nn.Module):
         self.use_static = use_static
         self.pre_type = pre_type
         self.use_cl = use_cl
-        self.temp = temperature
+        self.temp = nn.parameter.Parameter(torch.tensor(temperature))
         self.angle = angle
         self.relation_prediction = relation_prediction
         self.entity_prediction = entity_prediction
