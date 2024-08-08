@@ -240,8 +240,24 @@ class RecurrentRGCN(nn.Module):
         self.w7 = nn.Linear(self.h_dim, self.h_dim)
         self.w_cl = nn.Linear(self.h_dim * 2, self.h_dim)
 
-        self.weight_t2 = nn.parameter.Parameter(torch.randn(1, h_dim))
-        self.bias_t2 = nn.parameter.Parameter(torch.randn(1, h_dim))
+        self.weight_t2 = nn.ParameterList(
+            [
+                nn.Parameter(
+                    torch.from_numpy(
+                        np.linspace(-self.h_dim, self.h_dim, self.h_dim)
+                    ).float()
+                )
+            ]
+        )
+        self.bias_t2 = nn.ParameterList(
+            [
+                nn.Parameter(
+                    torch.from_numpy(
+                        np.linspace(-self.h_dim, self.h_dim, self.h_dim)
+                    ).float()
+                )
+            ]
+        )
 
         self.weight_1 = nn.Linear(self.h_dim * 2, self.h_dim)
         self.weight_2 = nn.Linear(self.h_dim * 2, self.h_dim)
@@ -388,7 +404,13 @@ class RecurrentRGCN(nn.Module):
             for i, g in enumerate(g_list):
                 g = g.to(self.gpu)
                 t2 = len(g_list) - i + 1
-                h_t = torch.cos(self.weight_t2 * t2 + self.bias_t2).repeat(
+                h_t = (
+                    sum(
+                        torch.cos(weight * t2 + bias)
+                        for weight, bias in zip(self.weight_t2, self.bias_t2)
+                    )
+                    / math.sqrt(self.h_dim)
+                ).repeat(
                     self.num_ents, 1
                 )  # 论文中的公式(2)
                 self.h = self.w4(torch.concat([self.h, h_t], dim=1))  # 论文中的公式(3)
@@ -551,7 +573,13 @@ class RecurrentRGCN(nn.Module):
             else torch.zeros(1)
         )
         t1 = torch.tensor(T_idx).cuda().to(self.gpu)
-        q_t = torch.cos(self.weight_t2 * 0 + self.bias_t2).repeat(self.num_ents, 1)
+        q_t = (
+            sum(
+                torch.cos(weight * 0 + bias)
+                for weight, bias in zip(self.weight_t2, self.bias_t2)
+            )
+            / math.sqrt(self.h_dim)
+        ).repeat(self.num_ents, 1)
         qe_emb = self.w4(
             torch.concat([self.dynamic_emb, q_t], dim=1)
         )  # 论文中的公式(3)，所以w4是论文中的W0
